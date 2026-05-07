@@ -70,7 +70,6 @@ release/PreSubmissionAIQC-portable.zip
 PreSubmissionAIQC.exe
 ```
 
-Docker 不建议作为最终用户运行方式。Docker 更适合做可复现构建环境，但普通 Windows 桌面 GUI 运行仍需要 Docker Desktop、容器文件映射和额外 GUI 支持；同时 Windows Credential Manager/keyring 集成也会更复杂。对非技术用户，PyInstaller one-folder/portable zip 更符合“双击运行”的目标。
 
 ## 用户使用流程
 
