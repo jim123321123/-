@@ -16,6 +16,7 @@ DEFAULT_THRESHOLDS = {
         "near_duplicate_similarity_threshold": 0.95,
         "red_duplicate_similarity_threshold": 0.99,
         "red_column_correlation_threshold": 0.999,
+        "max_near_duplicate_rows": 2000,
     },
     "ratio_pattern": {"min_matched_rows": 8, "ratio_cv_threshold": 0.01},
     "equal_difference": {
@@ -115,6 +116,18 @@ def _check_exact_duplicates(issues, file_name, sheet_name, df):
 def _check_near_duplicate_rows(issues, file_name, sheet_name, df, thresholds):
     cols = _numeric_columns(df)
     if len(cols) < 5:
+        return
+    max_rows = thresholds["duplicate"].get("max_near_duplicate_rows", 2000)
+    if len(df) > max_rows:
+        _issue(
+            issues,
+            "near_duplicate_scan_skipped_large_sheet",
+            "Yellow",
+            file_name,
+            sheet_name,
+            f"Sheet has {len(df)} rows; pairwise near-duplicate row scan was skipped because it would require more than {max_rows}x{max_rows} comparisons.",
+            action="该表行数很大，软件已保留完整重复、列关系、范围和缺失等检查；如需近似重复行筛查，建议按样本分组或抽样后单独复核。",
+        )
         return
     ndf = _numeric_frame(df, cols)
     orange = thresholds["duplicate"]["near_duplicate_similarity_threshold"]

@@ -33,3 +33,24 @@ def test_final_status_explanation_is_plain_chinese():
 
     assert "结论：暂不建议直接投稿" in text
     assert "3 个必须优先处理的问题" in text
+
+
+def test_large_sheet_skip_issue_is_plain_chinese():
+    issue_log = pd.DataFrame(
+        [
+            {
+                "risk_level": "Yellow",
+                "issue_type": "near_duplicate_scan_skipped_large_sheet",
+                "file_name": "large.xlsx",
+                "sheet_or_panel": "BigSheet",
+                "sample_or_variable": "",
+                "evidence": "Sheet has 104269 rows; pairwise near-duplicate row scan was skipped because it would require more than 2000x2000 comparisons.",
+                "recommended_action": "",
+            }
+        ]
+    )
+
+    table = build_plain_issue_table(issue_log)
+
+    assert "大表已跳过近似重复行两两扫描" in table.iloc[0]["发现的问题"]
+    assert "按实验分组拆分" in table.iloc[0]["建议怎么做"]

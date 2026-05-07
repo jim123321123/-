@@ -41,3 +41,23 @@ def test_numeric_forensics_detects_required_risk_patterns():
     assert "extreme_or_infinite_value" in types
     assert "terminal_digit_anomaly" in types
     assert "enrichment_count_gene_mismatch" in types
+
+
+def test_large_sheet_skips_quadratic_near_duplicate_scan():
+    df = pd.DataFrame(
+        {
+            "A": range(2501),
+            "B": range(2501),
+            "C": range(2501),
+            "D": range(2501),
+            "E": range(2501),
+            "F": range(2501),
+        }
+    )
+
+    issues = run_numeric_forensics(
+        [("large.xlsx", "BigSheet", "generic_numeric", df)],
+        thresholds={"duplicate": {"max_near_duplicate_rows": 2000}},
+    )
+
+    assert "near_duplicate_scan_skipped_large_sheet" in issue_types(issues)

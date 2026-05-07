@@ -15,6 +15,7 @@ RISK_LABELS = {
 ISSUE_LABELS = {
     "exact_duplicate_rows": "发现完全重复的数据行",
     "near_duplicate_rows": "发现高度相似的数据行",
+    "near_duplicate_scan_skipped_large_sheet": "大表已跳过近似重复行两两扫描",
     "duplicate_numeric_columns": "发现内容完全相同的数据列",
     "high_column_correlation": "发现两个数据列异常高度相关",
     "fixed_ratio_columns": "发现两个数据列存在固定倍数关系",
@@ -37,6 +38,7 @@ ISSUE_LABELS = {
 ACTION_BY_ISSUE = {
     "exact_duplicate_rows": "请优先核对这些行对应的原始记录，确认是否为复制粘贴、重复导出或样本编号错配。",
     "near_duplicate_rows": "请比较这些行对应的样本或实验条件，确认是否存在误复制、模板填充或样本混淆。",
+    "near_duplicate_scan_skipped_large_sheet": "该表行数很大，已保留其他本地规则检查；如需近似重复行筛查，建议按实验分组拆分后单独复核。",
     "fixed_ratio_columns": "请确认这两个指标是否确实存在合法单位换算或公式关系；如果没有明确解释，应回查原始数据。",
     "equal_difference_run": "请检查该列是否由人工填充、公式拖拽、排序或批量录入造成。",
     "terminal_digit_anomaly": "请核对仪器精度、四舍五入规则和人工录入记录。",
