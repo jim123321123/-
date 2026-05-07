@@ -8,7 +8,7 @@ import pandas as pd
 from matplotlib.font_manager import FontProperties
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import cm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
@@ -72,6 +72,76 @@ def _small_table(df: pd.DataFrame, columns: list[str], max_rows: int = 12):
     return data
 
 
+def _cell_style(font: str, font_size: int = 7) -> ParagraphStyle:
+    return ParagraphStyle(
+        name=f"Cell-{font_size}",
+        fontName=font,
+        fontSize=font_size,
+        leading=font_size + 2,
+        wordWrap="CJK",
+        splitLongWords=True,
+        spaceAfter=0,
+        spaceBefore=0,
+    )
+
+
+def _table_col_widths(columns: list[str], available_width: float) -> list[float]:
+    presets = {
+        ("风险等级", "文件", "表格/页面", "具体位置", "发现的问题", "建议怎么做"): [0.10, 0.16, 0.14, 0.11, 0.25, 0.24],
+        ("file_name", "sheet_name", "n_rows", "n_cols", "qc_profile", "parse_status"): [0.25, 0.24, 0.08, 0.08, 0.22, 0.13],
+        ("tool", "status", "message"): [0.22, 0.18, 0.60],
+    }
+    key = tuple(columns)
+    ratios = presets.get(key)
+    if ratios is None:
+        ratios = [1 / len(columns)] * len(columns)
+    return [available_width * ratio for ratio in ratios]
+
+
+def _wrapped_table(
+    df: pd.DataFrame,
+    columns: list[str],
+    available_width: float,
+    max_rows: int = 12,
+    font: str | None = None,
+    font_size: int = 7,
+) -> Table:
+    font_name = font or _register_font()
+    style = _cell_style(font_name, font_size)
+    header_style = _cell_style(font_name, font_size)
+    if df is None or df.empty:
+        data = [[Paragraph("No records", style)]]
+        widths = [available_width]
+    else:
+        source = df.head(max_rows)
+        data = [[Paragraph(str(column), header_style) for column in columns]]
+        for _, row in source.iterrows():
+            data.append(
+                [
+                    Paragraph("" if pd.isna(row.get(column, "")) else str(row.get(column, "")), style)
+                    for column in columns
+                ]
+            )
+        widths = _table_col_widths(columns, available_width)
+    table = Table(data, colWidths=widths, repeatRows=1, hAlign="LEFT")
+    table.setStyle(
+        TableStyle(
+            [
+                ("FONTNAME", (0, 0), (-1, -1), font_name),
+                ("FONTSIZE", (0, 0), (-1, -1), font_size),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+                ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 3),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 3),
+                ("TOPPADDING", (0, 0), (-1, -1), 3),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+            ]
+        )
+    )
+    return table
+
+
 def _paragraph_block(text: str, style) -> list[Paragraph]:
     return [Paragraph(part, style) for part in text.splitlines() if part.strip()]
 
@@ -89,6 +159,7 @@ def generate_pdf_report(
 ) -> Path:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     font = _register_font()
+    available_width = A4[0] - 2.4 * cm
     styles = getSampleStyleSheet()
     for style in styles.byName.values():
         style.fontName = font
@@ -140,7 +211,15 @@ def generate_pdf_report(
         Image(str(file_type_fig), width=14 * cm, height=8 * cm),
         Paragraph("表格数据结构识别", styles["Heading1"]),
     ]
-    story.append(Table(_small_table(sheet_inventory, ["file_name", "sheet_name", "n_rows", "n_cols", "qc_profile", "parse_status"]), repeatRows=1))
+    story.append(
+        _wrapped_table(
+            sheet_inventory,
+            ["file_name", "sheet_name", "n_rows", "n_cols", "qc_profile", "parse_status"],
+            available_width,
+            max_rows=12,
+            font=font,
+        )
+    )
     story.extend(
         [
             Paragraph("数值型原始数据真实性与合理性检查", styles["Heading1"]),
@@ -148,13 +227,20 @@ def generate_pdf_report(
             Paragraph("图片完整性AI检查", styles["Heading1"]),
             Paragraph("本地模块生成 image_check_package.zip 和 image_inventory.csv；Proofig / Imagetwin 需通过官方 API 或手动上传检查包完成。", styles["Normal"]),
             Paragraph("外部AI工具调用状态", styles["Heading1"]),
-            Table(_small_table(external_status, ["tool", "status", "message"]), repeatRows=1),
+            _wrapped_table(external_status, ["tool", "status", "message"], available_width, max_rows=12, font=font),
             Paragraph("风险分级汇总", styles["Heading1"]),
             Image(str(risk_fig), width=14 * cm, height=8 * cm),
             Image(str(module_fig), width=14 * cm, height=8 * cm),
             Paragraph("需要人工复核的问题清单（前50条）", styles["Heading1"]),
             Paragraph("下面的表格已经把技术规则翻译成中文。请优先看“文件”“表格/页面”“具体位置”和“建议怎么做”。完整内容见 QC_issue_log.xlsx。", styles["Normal"]),
-            Table(_small_table(plain_issues, ["风险等级", "文件", "表格/页面", "具体位置", "发现的问题", "建议怎么做"], 50), repeatRows=1),
+            _wrapped_table(
+                plain_issues,
+                ["风险等级", "文件", "表格/页面", "具体位置", "发现的问题", "建议怎么做"],
+                available_width,
+                max_rows=50,
+                font=font,
+                font_size=6,
+            ),
             PageBreak(),
             Paragraph("人工复核建议", styles["Heading1"]),
             Paragraph("Red 问题投稿前必须解决；Orange 问题需回查原始记录；Yellow 问题建议记录解释。图片AI标记需结合未裁剪原图和外部平台原始报告复核。", styles["Normal"]),
@@ -163,18 +249,6 @@ def generate_pdf_report(
         ]
     )
 
-    for item in story:
-        if isinstance(item, Table):
-            item.setStyle(
-                TableStyle(
-                    [
-                        ("FONTNAME", (0, 0), (-1, -1), font),
-                        ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
-                        ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
-                        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                    ]
-                )
-            )
     doc = SimpleDocTemplate(
         str(output_path),
         pagesize=A4,
