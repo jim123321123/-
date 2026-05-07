@@ -5,6 +5,7 @@ from typing import Any
 
 import matplotlib.pyplot as plt
 import pandas as pd
+from matplotlib.font_manager import FontProperties
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
@@ -13,6 +14,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import Image, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
+from .report_language import build_plain_issue_table, build_priority_review_text, explain_final_status
 from .report_summary import generate_raw_data_overview
 
 
@@ -23,7 +25,7 @@ DISCLAIMER = (
 )
 
 
-def _register_font() -> str:
+def _chinese_font_path() -> Path | None:
     candidates = [
         Path("C:/Windows/Fonts/msyh.ttc"),
         Path("C:/Windows/Fonts/simsun.ttc"),
@@ -31,8 +33,15 @@ def _register_font() -> str:
     ]
     for font in candidates:
         if font.exists():
-            pdfmetrics.registerFont(TTFont("CNFont", str(font)))
-            return "CNFont"
+            return font
+    return None
+
+
+def _register_font() -> str:
+    font = _chinese_font_path()
+    if font is not None:
+        pdfmetrics.registerFont(TTFont("CNFont", str(font)))
+        return "CNFont"
     return "Helvetica"
 
 
@@ -41,9 +50,13 @@ def _plot_counts(counts: pd.Series, title: str, output_path: Path) -> Path:
     fig, ax = plt.subplots(figsize=(5, 3))
     if counts.empty:
         counts = pd.Series({"None": 0})
+    font_path = _chinese_font_path()
+    font_prop = FontProperties(fname=str(font_path)) if font_path is not None else None
     counts.plot(kind="bar", ax=ax, color="#4f7cac")
-    ax.set_title(title)
+    ax.set_title(title, fontproperties=font_prop)
     ax.set_ylabel("Count")
+    for label in ax.get_xticklabels():
+        label.set_fontproperties(font_prop)
     fig.tight_layout()
     fig.savefig(output_path, dpi=160)
     plt.close(fig)
@@ -82,20 +95,28 @@ def generate_pdf_report(
 
     file_type_fig = _plot_counts(
         manifest["file_type"].value_counts() if not manifest.empty else pd.Series(dtype=int),
-        "File type counts",
+        "文件类型统计",
         figures_dir / "file_type_counts.png",
     )
     risk_fig = _plot_counts(
         issue_log["risk_level"].value_counts() if not issue_log.empty else pd.Series(dtype=int),
-        "Risk level counts",
+        "风险等级统计",
         figures_dir / "risk_level_counts.png",
     )
     module_fig = _plot_counts(
         issue_log["module"].value_counts() if not issue_log.empty else pd.Series(dtype=int),
-        "Risk by module",
+        "按模块统计风险",
         figures_dir / "risk_by_module.png",
     )
     overview = generate_raw_data_overview(manifest, sheet_inventory, issue_log, external_status)
+    plain_issues = build_plain_issue_table(issue_log, limit=50)
+    status_text = explain_final_status(
+        summary.get("final_status", "Pass"),
+        int(summary.get("red_count", 0)),
+        int(summary.get("orange_count", 0)),
+        int(summary.get("yellow_count", 0)),
+    )
+    priority_text = build_priority_review_text(issue_log)
 
     story = [
         Paragraph("投稿前AI数据真实性与合理性质控报告", styles["Title"]),
@@ -105,6 +126,11 @@ def generate_pdf_report(
         Paragraph(f"软件版本：{summary.get('app_version', '')}", styles["Normal"]),
         Paragraph(f"检查状态：{summary.get('final_status', 'Pass')}", styles["Heading2"]),
         Spacer(1, 0.5 * cm),
+        Paragraph("先看结论", styles["Heading1"]),
+        Paragraph(status_text, styles["Normal"]),
+        Paragraph(priority_text, styles["Normal"]),
+        Paragraph("报告中的 Red 和 Orange 不是“定罪结论”，而是提醒课题组必须回到原始记录逐项确认。", styles["Normal"]),
+        Spacer(1, 0.3 * cm),
         Paragraph("压缩包原始数据整体情况", styles["Heading1"]),
         *_paragraph_block(overview, styles["Normal"]),
         Spacer(1, 0.3 * cm),
@@ -126,8 +152,9 @@ def generate_pdf_report(
             Paragraph("风险分级汇总", styles["Heading1"]),
             Image(str(risk_fig), width=14 * cm, height=8 * cm),
             Image(str(module_fig), width=14 * cm, height=8 * cm),
-            Paragraph("问题清单（前50条）", styles["Heading1"]),
-            Table(_small_table(issue_log, ["issue_id", "risk_level", "module", "issue_type", "evidence"], 50), repeatRows=1),
+            Paragraph("需要人工复核的问题清单（前50条）", styles["Heading1"]),
+            Paragraph("下面的表格已经把技术规则翻译成中文。请优先看“文件”“表格/页面”“具体位置”和“建议怎么做”。完整内容见 QC_issue_log.xlsx。", styles["Normal"]),
+            Table(_small_table(plain_issues, ["风险等级", "文件", "表格/页面", "具体位置", "发现的问题", "建议怎么做"], 50), repeatRows=1),
             PageBreak(),
             Paragraph("人工复核建议", styles["Heading1"]),
             Paragraph("Red 问题投稿前必须解决；Orange 问题需回查原始记录；Yellow 问题建议记录解释。图片AI标记需结合未裁剪原图和外部平台原始报告复核。", styles["Normal"]),

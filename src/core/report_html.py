@@ -6,6 +6,7 @@ from typing import Any
 
 import pandas as pd
 
+from .report_language import build_plain_issue_table, build_priority_review_text, explain_final_status
 from .report_summary import generate_raw_data_overview
 
 
@@ -37,6 +38,14 @@ def generate_html_report(
 ) -> Path:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     overview = generate_raw_data_overview(manifest, sheet_inventory, issue_log, external_status)
+    plain_issues = build_plain_issue_table(issue_log, limit=100)
+    status_text = explain_final_status(
+        summary.get("final_status", "Pass"),
+        int(summary.get("red_count", 0)),
+        int(summary.get("orange_count", 0)),
+        int(summary.get("yellow_count", 0)),
+    )
+    priority_text = build_priority_review_text(issue_log)
     html = f"""<!doctype html>
 <html lang="zh-CN">
 <head>
@@ -51,6 +60,7 @@ def generate_html_report(
     .summary {{ display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 10px; }}
     .item {{ border: 1px solid #ddd; padding: 10px; border-radius: 6px; }}
     .overview {{ background: #f7fafc; border-left: 4px solid #4f7cac; padding: 12px 16px; margin: 16px 0 28px; }}
+    .conclusion {{ background: #fff8e5; border-left: 4px solid #d9822b; padding: 12px 16px; margin: 16px 0 28px; }}
   </style>
 </head>
 <body>
@@ -65,14 +75,21 @@ def generate_html_report(
     <div class="item"><strong>Sheet 数</strong><br>{len(sheet_inventory)}</div>
     <div class="item"><strong>输出目录</strong><br>{escape(str(summary.get("run_dir", "")))}</div>
   </div>
+  <h2>先看结论</h2>
+  <div class="conclusion">
+    <p>{escape(status_text)}</p>
+    <p>{escape(priority_text)}</p>
+    <p>报告中的 Red 和 Orange 不是“定罪结论”，而是提醒课题组必须回到原始记录逐项确认。</p>
+  </div>
   <h2>压缩包原始数据整体情况</h2>
   <div class="overview">
 {_paragraphs(overview)}
   </div>
   <h2>外部AI状态</h2>
   {_table(external_status)}
-  <h2>问题清单（前100条）</h2>
-  {_table(issue_log, 100)}
+  <h2>需要人工复核的问题清单（前100条）</h2>
+  <p>下面的表格已经把技术规则翻译成中文。请优先看“文件”“表格/页面”“具体位置”和“建议怎么做”。</p>
+  {_table(plain_issues, 100)}
   <h2>文件清单</h2>
   {_table(manifest, 100)}
   <h2>Sheet Inventory</h2>
