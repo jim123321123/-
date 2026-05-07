@@ -6,11 +6,24 @@ from typing import Any
 
 import pandas as pd
 
+from .report_summary import generate_raw_data_overview
+
+
+DISCLAIMER = (
+    "本报告用于投稿前数据质量和研究诚信风险筛查。自动化结果不能直接定性研究不端。"
+    "所有 Red 和 Orange 问题均需结合原始记录、实验记录本、仪器导出文件、未裁剪原始图片和人工复核确认。"
+    "本报告中的外部AI图片检查结果依赖用户提供的 API 服务或用户导入的外部工具报告。"
+)
+
 
 def _table(df: pd.DataFrame, limit: int = 100) -> str:
     if df is None or df.empty:
         return "<p>No records.</p>"
     return df.head(limit).to_html(index=False, escape=True)
+
+
+def _paragraphs(text: str) -> str:
+    return "\n".join(f"  <p>{escape(part)}</p>" for part in text.splitlines() if part.strip())
 
 
 def generate_html_report(
@@ -23,6 +36,7 @@ def generate_html_report(
     external_status: pd.DataFrame,
 ) -> Path:
     output_path.parent.mkdir(parents=True, exist_ok=True)
+    overview = generate_raw_data_overview(manifest, sheet_inventory, issue_log, external_status)
     html = f"""<!doctype html>
 <html lang="zh-CN">
 <head>
@@ -36,6 +50,7 @@ def generate_html_report(
     th {{ background: #f2f5f7; }}
     .summary {{ display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 10px; }}
     .item {{ border: 1px solid #ddd; padding: 10px; border-radius: 6px; }}
+    .overview {{ background: #f7fafc; border-left: 4px solid #4f7cac; padding: 12px 16px; margin: 16px 0 28px; }}
   </style>
 </head>
 <body>
@@ -50,6 +65,10 @@ def generate_html_report(
     <div class="item"><strong>Sheet 数</strong><br>{len(sheet_inventory)}</div>
     <div class="item"><strong>输出目录</strong><br>{escape(str(summary.get("run_dir", "")))}</div>
   </div>
+  <h2>压缩包原始数据整体情况</h2>
+  <div class="overview">
+{_paragraphs(overview)}
+  </div>
   <h2>外部AI状态</h2>
   {_table(external_status)}
   <h2>问题清单（前100条）</h2>
@@ -59,7 +78,7 @@ def generate_html_report(
   <h2>Sheet Inventory</h2>
   {_table(sheet_inventory, 100)}
   <h2>免责声明</h2>
-  <p>本报告用于投稿前数据质量和研究诚信风险筛查。自动化结果不能直接定性研究不端。所有 Red 和 Orange 问题均需结合原始记录、实验记录本、仪器导出文件、未裁剪原始图片和人工复核确认。本报告中的外部AI图片检查结果依赖用户提供的 API 服务或用户导入的外部工具报告。</p>
+  <p>{escape(DISCLAIMER)}</p>
 </body>
 </html>
 """

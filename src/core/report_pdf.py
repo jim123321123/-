@@ -13,6 +13,8 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import Image, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
+from .report_summary import generate_raw_data_overview
+
 
 DISCLAIMER = (
     "本报告用于投稿前数据质量和研究诚信风险筛查。自动化结果不能直接定性研究不端。"
@@ -57,6 +59,10 @@ def _small_table(df: pd.DataFrame, columns: list[str], max_rows: int = 12):
     return data
 
 
+def _paragraph_block(text: str, style) -> list[Paragraph]:
+    return [Paragraph(part, style) for part in text.splitlines() if part.strip()]
+
+
 def generate_pdf_report(
     output_path: Path,
     figures_dir: Path,
@@ -74,9 +80,22 @@ def generate_pdf_report(
     for style in styles.byName.values():
         style.fontName = font
 
-    file_type_fig = _plot_counts(manifest["file_type"].value_counts() if not manifest.empty else pd.Series(dtype=int), "File type counts", figures_dir / "file_type_counts.png")
-    risk_fig = _plot_counts(issue_log["risk_level"].value_counts() if not issue_log.empty else pd.Series(dtype=int), "Risk level counts", figures_dir / "risk_level_counts.png")
-    module_fig = _plot_counts(issue_log["module"].value_counts() if not issue_log.empty else pd.Series(dtype=int), "Risk by module", figures_dir / "risk_by_module.png")
+    file_type_fig = _plot_counts(
+        manifest["file_type"].value_counts() if not manifest.empty else pd.Series(dtype=int),
+        "File type counts",
+        figures_dir / "file_type_counts.png",
+    )
+    risk_fig = _plot_counts(
+        issue_log["risk_level"].value_counts() if not issue_log.empty else pd.Series(dtype=int),
+        "Risk level counts",
+        figures_dir / "risk_level_counts.png",
+    )
+    module_fig = _plot_counts(
+        issue_log["module"].value_counts() if not issue_log.empty else pd.Series(dtype=int),
+        "Risk by module",
+        figures_dir / "risk_by_module.png",
+    )
+    overview = generate_raw_data_overview(manifest, sheet_inventory, issue_log, external_status)
 
     story = [
         Paragraph("投稿前AI数据真实性与合理性质控报告", styles["Title"]),
@@ -86,6 +105,9 @@ def generate_pdf_report(
         Paragraph(f"软件版本：{summary.get('app_version', '')}", styles["Normal"]),
         Paragraph(f"检查状态：{summary.get('final_status', 'Pass')}", styles["Heading2"]),
         Spacer(1, 0.5 * cm),
+        Paragraph("压缩包原始数据整体情况", styles["Heading1"]),
+        *_paragraph_block(overview, styles["Normal"]),
+        Spacer(1, 0.3 * cm),
         Paragraph("检查范围与方法", styles["Heading1"]),
         Paragraph("本软件执行本地确定性规则检查，并整合外部AI工具状态或导入报告。外部工具不内置在本软件中。", styles["Normal"]),
         Paragraph("文件完整性检查", styles["Heading1"]),
@@ -126,6 +148,13 @@ def generate_pdf_report(
                     ]
                 )
             )
-    doc = SimpleDocTemplate(str(output_path), pagesize=A4, rightMargin=1.2 * cm, leftMargin=1.2 * cm, topMargin=1.2 * cm, bottomMargin=1.2 * cm)
+    doc = SimpleDocTemplate(
+        str(output_path),
+        pagesize=A4,
+        rightMargin=1.2 * cm,
+        leftMargin=1.2 * cm,
+        topMargin=1.2 * cm,
+        bottomMargin=1.2 * cm,
+    )
     doc.build(story)
     return output_path
