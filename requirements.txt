@@ -1,0 +1,13 @@
+PySide6
+pandas
+openpyxl
+numpy
+scipy
+matplotlib
+reportlab
+pyyaml
+keyring
+requests
+pytest
+xlsxwriter
+pyinstaller

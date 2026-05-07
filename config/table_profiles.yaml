@@ -1,0 +1,12 @@
+rna_seq_de:
+  keywords: [gene, symbol, locus, log2fc, log2foldchange, pvalue, p, qvalue, padj, fdr, fpkm, counts, expression]
+metabolomics:
+  keywords: [metabolite, biochemical, biochemicalname, kegg, hmdb, foldchange, pvalue, superpathway, subpathway]
+enrichment:
+  keywords: [term, pathway, ontology, count, pvalue, fdr, qvalue, genes, geneid, enrichment]
+gene_list:
+  keywords: [gene, symbol, tag, category, list, group]
+figure_source:
+  keywords: [figure, panel, mean, sd, sem, n, pvalue, source]
+generic_numeric:
+  keywords: []

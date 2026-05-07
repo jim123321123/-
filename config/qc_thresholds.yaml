@@ -1,0 +1,40 @@
+duplicate:
+  near_duplicate_similarity_threshold: 0.95
+  red_duplicate_similarity_threshold: 0.99
+  high_column_correlation_threshold: 0.995
+  red_column_correlation_threshold: 0.999
+ratio_pattern:
+  min_matched_rows: 8
+  ratio_cv_threshold: 0.01
+  r2_threshold: 0.995
+  ratio_tolerance: 0.001
+equal_difference:
+  min_run_length_red: 5
+  min_run_length_orange: 4
+  absolute_tolerance: 1.0e-8
+  relative_tolerance: 0.001
+  check_original_order: true
+  check_sorted_order: true
+digit_pattern:
+  max_zero_or_five_fraction_orange: 0.45
+  max_zero_or_five_fraction_red: 0.60
+  terminal_digit_chisq_p_threshold: 0.001
+  max_integer_like_fraction: 0.60
+  min_n_for_digit_test: 20
+outlier:
+  robust_z_threshold: 3.5
+  iqr_multiplier: 1.5
+variance:
+  min_group_cv: 0.01
+  min_group_n: 5
+correlation:
+  high_corr_threshold: 0.995
+  red_corr_threshold: 0.999
+  min_non_missing_pairs: 10
+missingness:
+  high_column_missing_fraction_yellow: 0.5
+  high_column_missing_fraction_orange: 0.8
+  high_row_missing_fraction_yellow: 0.5
+  high_row_missing_fraction_orange: 0.8
+extreme_values:
+  float_max_warning_threshold: 1.0e+300
