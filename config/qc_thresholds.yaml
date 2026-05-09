@@ -9,8 +9,8 @@ ratio_pattern:
   r2_threshold: 0.995
   ratio_tolerance: 0.001
 equal_difference:
-  min_run_length_red: 5
-  min_run_length_orange: 4
+  min_run_length_red: 8
+  min_run_length_orange: 6
   absolute_tolerance: 1.0e-8
   relative_tolerance: 0.001
   check_original_order: true
@@ -38,3 +38,30 @@ missingness:
   high_row_missing_fraction_orange: 0.8
 extreme_values:
   float_max_warning_threshold: 1.0e+300
+numeric:
+  constant_delta_min_n: 6
+  constant_delta_match_rate_high: 0.90
+  constant_delta_match_rate_medium: 0.75
+  affine_min_n: 8
+  affine_r2_high: 0.999999
+  affine_r2_medium: 0.999
+  duplicate_decimal_min_n: 10
+  decimal_match_rate_high: 0.80
+  decimal_match_rate_medium: 0.60
+  terminal_digit_min_n: 30
+  terminal_digit_p_medium: 0.001
+  terminal_digit_p_high: 0.000001
+  terminal_digit_dominant_ratio_medium: 0.35
+  terminal_digit_dominant_ratio_high: 0.50
+  arithmetic_sequence_min_n: 10
+  arithmetic_sequence_match_rate: 0.85
+  repeated_value_min_n: 20
+  repeated_value_unique_ratio: 0.20
+  repeated_value_dominant_ratio: 0.50
+  cross_file_window_rows: 5
+  cross_file_window_cols: 2
+image:
+  exact_duplicate_enabled: true
+  perceptual_duplicate_enabled: true
+  phash_high_distance: 5
+  phash_medium_distance: 10
